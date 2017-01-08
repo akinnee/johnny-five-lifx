@@ -1,6 +1,7 @@
 const lifx = require("./lifx");
 const five = require("johnny-five");
 const board = new five.Board();
+const child_process = require("child_process");
 
 board.on("ready", function() {
 
@@ -26,13 +27,49 @@ board.on("ready", function() {
     wasHeld = false;
   });
 
+  let inShutdownConfirmationMode = false;
+
   // "hold" the button is pressed for specified time.
   //        defaults to 500ms (1/2 second)
   //        set
   button.on("hold", function() {
     console.log("hold");
     if (!wasHeld) {
-      lifx.toggleLights();
+
+      // if already in shutdown confirmation mode, reboot the host
+      if (inShutdownConfirmationMode) {
+        inShutdownConfirmationMode = false;
+
+        // feedback that the the command has triggered
+        lifx.lightsOn();
+        for (var i = 0; i < 6; i++) {
+          lifx.cycleLightsColor();
+        }
+
+        child_process.exec("sudo reboot");
+
+      // holding while the lights are on will turn them off
+      } else if (lifx.lightsAreOn()) {
+        lifx.lightsOff();
+
+      // holding while the lights are off will enter shutdown confirmation mode
+      // for a short time
+      } else {
+
+        // feedback that the the mode has entered
+        lifx.lightsOn();
+        for (var i = 0; i < 6; i++) {
+          lifx.cycleLightsColor();
+        }
+        lifx.lightsOff();
+
+        inShutdownConfirmationMode = true;
+
+        // mode cancelled
+        setTimeout(() => {
+          inShutdownConfirmationMode = false;
+        }, 5000);
+      }
     }
     wasHeld = true;
   });
