@@ -43,7 +43,21 @@ function lightsOn() {
 function lightsOff() {
 	lightsAreOnVal = false;
 	lights.forEach(light => {
-		light.off(30000);
+
+		// dim light immediately to provide user feedback
+		light.getState((error, data) => {
+			if (!error) {
+				const { color } = data;
+				const { hue, saturation, brightness, kelvin } = color;
+				const newBrightness = brightness / 2;
+				const duration = 0;
+				light.color(hue, saturation, newBrightness, kelvin, duration, () => {
+
+					// then fade the light off so the user has time to leave the room
+					light.off(30000);
+				});
+			}
+		});
 	});
 }
 
