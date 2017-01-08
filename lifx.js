@@ -43,7 +43,7 @@ function lightsOn() {
 function lightsOff() {
 	lightsAreOnVal = false;
 	lights.forEach(light => {
-		light.off();
+		light.off(30000);
 	});
 }
 
