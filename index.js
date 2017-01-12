@@ -31,7 +31,16 @@ const inputArduino = new InputArduino({
 
 		// in modifier mode, when button is held, turn off the lights
 		} else if (state.modifierMode) {
-			lifx.lightsOff();
+			
+			if (lifx.lightsAreOn()) {
+
+				lifx.lightsOff();
+			} else {
+
+				setState({
+					rebootMode: true
+				});
+			}
 
 		} else {
 
