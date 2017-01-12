@@ -3,7 +3,9 @@ module.exports = {
 	lightsOn,
 	lightsOff,
 	cycleLightsColor,
-	lightsAreOn
+	lightsAreOn,
+	pushColor,
+	popColor
 };
 
 const LifxClient = require("node-lifx").Client;
@@ -52,9 +54,11 @@ function lightsOff() {
 				const newBrightness = brightness / 2;
 				const duration = 0;
 				light.color(hue, saturation, newBrightness, kelvin, duration, () => {
+					light.color(hue, saturation, brightness, kelvin, duration, () => {
 
-					// then fade the light off so the user has time to leave the room
-					light.off(30000);
+						// then fade the light off so the user has time to leave the room
+						light.off(30000);
+					});
 				});
 			}
 		});
@@ -92,6 +96,41 @@ function cycleLightsColor() {
 		const kelvin = 3500
 		const duration = 0;
 		light.color(hue, saturation, brightness, kelvin, duration);
+	});
+}
+
+const pushColorState = [];
+
+function pushColor({ hue, saturation, brightness, kelvin, duration = 0 }) {
+
+	Promise.all(lights.map(light => new Promise((resolve, reject) => {
+
+		light.getState((error, data) => {
+
+			if (error) {
+
+				reject(error);
+			} else {
+
+				const { color } = data;
+				light.color(hue, saturation, brightness, kelvin, duration);
+				resolve(color);
+			}
+		});
+	})))
+		.then(colors => {
+			pushColorState.push(colors);
+		});
+}
+
+// restore the color that was present before the last pushColor call
+function popColor({ duration = 0 } = {}) {
+
+	const colors = pushColorState.pop();
+
+	lights.forEach((light, index) => {
+
+		const { hue, saturation, brightness, kelvin } = colors[index];
 		light.color(hue, saturation, brightness, kelvin, duration);
 	});
 }
