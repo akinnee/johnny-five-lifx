@@ -6,6 +6,8 @@ let state = {
 	// when in modifier mode, the inputs may have different actions
 	// it's like a function/shift key
 	modifierMode: false,
+	// reboot mode allows the host to be rebooted from the controls
+	// useful if no monitor and no ssh access
 	rebootMode: false
 };
 
@@ -53,6 +55,7 @@ const inputArduino = new InputArduino({
 
 		if (state.modifierMode) {
 
+			// mod mode changes saturation
 			lifx.getLightStates()
 				.then(lightStates => {
 
@@ -60,12 +63,12 @@ const inputArduino = new InputArduino({
 					const { color } = lightState;
 
 					lifx.pushColor(Object.assign({}, color, {
-						hue: percent * 3.6,
-						duration: 500
+						saturation: percent
 					}));
 				});
 		} else {
 
+			// normal mode changes brightness
 			lifx.getLightStates()
 				.then(lightStates => {
 
@@ -73,8 +76,7 @@ const inputArduino = new InputArduino({
 					const { color } = lightState;
 
 					lifx.pushColor(Object.assign({}, color, {
-						brightness: percent,
-						duration: 500
+						brightness: percent
 					}));
 				});
 		}

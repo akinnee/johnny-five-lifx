@@ -90,19 +90,17 @@ function cycleLightsColor() {
 		}
 	}
 
-	lights.forEach(light => {
-		const hue = currentHue;
-		const saturation = currentSaturation;
-		const brightness = 100;
-		const kelvin = 3500
-		const duration = 0;
-		light.color(hue, saturation, brightness, kelvin, duration);
+	pushColor({
+		hue: currentHue,
+		saturation: currentSaturation,
+		brightness: 100,
+		kelvin: 3500
 	});
 }
 
 const pushColorState = [];
 
-function pushColor({ hue, saturation, brightness, kelvin, duration = 0 }) {
+function pushColor({ hue, saturation, brightness, kelvin, duration = 500 }) {
 
 	return Promise.all(lights.map(light => new Promise((resolve, reject) => {
 
@@ -125,7 +123,7 @@ function pushColor({ hue, saturation, brightness, kelvin, duration = 0 }) {
 }
 
 // restore the color that was present before the last pushColor call
-function popColor({ duration = 0 } = {}) {
+function popColor({ duration = 500 } = {}) {
 
 	const colors = pushColorState.pop();
 
