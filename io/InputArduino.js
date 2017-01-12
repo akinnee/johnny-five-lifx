@@ -87,7 +87,7 @@ module.exports = class InputArduino {
 
         board.repl.inject({ pot });
 
-        let lastPercent = -1;
+        let lastPercent;
 
         const onData = (value, raw) => {
             if (value < min) {
@@ -98,7 +98,7 @@ module.exports = class InputArduino {
 
             const percent = Math.round((value - min) / range * 100);
 
-            if (percent !== lastPercent && typeof this.options.onPotChange === "function") {
+            if (lastPercent !== undefined && percent !== lastPercent && typeof this.options.onPotChange === "function") {
                 console.log("pot percent", percent);
                 this.options.onPotChange(percent);
             }
