@@ -2,8 +2,8 @@ const five = require("johnny-five");
 
 module.exports = class InputArduino {
 
-	constructor({ onPress, onLongPress, onDown, onHold, onUp }) {
-        this.options = { onPress, onLongPress, onDown, onHold, onUp };
+	constructor({ onPress, onLongPress, onDown, onHold, onUp, onPotChange }) {
+        this.options = { onPress, onLongPress, onDown, onHold, onUp, onPotChange };
 
         const board = new five.Board();
 
@@ -13,6 +13,12 @@ module.exports = class InputArduino {
 	}
 
     onBoardReady(board) {
+
+        this.initButton(board);
+        this.initPot(board);
+    }
+
+    initButton(board) {
 
         const button = new five.Button(2);
 
@@ -65,6 +71,42 @@ module.exports = class InputArduino {
             }
 
             wasHeld = false;
+        });
+    }
+
+    initPot(board) {
+
+        const pot = new five.Sensor({
+            pin: "A3",
+            freq: 250
+        });
+
+        const min = 10;
+        const max = 1010;
+        const range = max - min;
+
+        board.repl.inject({ pot });
+
+        let lastPercent = -1;
+
+        const onData = (value, raw) => {
+            if (value < min) {
+                value = min;
+            } else if (value > max) {
+                value = max;
+            }
+
+            const percent = Math.round((value - min) / range * 100);
+
+            if (percent !== lastPercent && typeof this.options.onPotChange === "function") {
+                console.log("pot percent", percent);
+                this.options.onPotChange(percent);
+            }
+
+            lastPercent = percent;
+        };
+        pot.on("data", function() {
+            onData(this.value, this.raw);
         });
     }
 }

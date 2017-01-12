@@ -5,7 +5,8 @@ module.exports = {
 	cycleLightsColor,
 	lightsAreOn,
 	pushColor,
-	popColor
+	popColor,
+	getLightStates,
 };
 
 const LifxClient = require("node-lifx").Client;
@@ -103,7 +104,7 @@ const pushColorState = [];
 
 function pushColor({ hue, saturation, brightness, kelvin, duration = 0 }) {
 
-	Promise.all(lights.map(light => new Promise((resolve, reject) => {
+	return Promise.all(lights.map(light => new Promise((resolve, reject) => {
 
 		light.getState((error, data) => {
 
@@ -133,4 +134,19 @@ function popColor({ duration = 0 } = {}) {
 		const { hue, saturation, brightness, kelvin } = colors[index];
 		light.color(hue, saturation, brightness, kelvin, duration);
 	});
+}
+
+function getLightStates() {
+
+	return Promise.all(lights.map(light => new Promise((resolve, reject) => {
+
+		light.getState((error, data) => {
+
+			if (error) {
+				reject(error);
+			} else {
+				resolve(data);
+			}
+		});
+	})))
 }
