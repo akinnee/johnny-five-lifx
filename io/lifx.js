@@ -3,6 +3,8 @@ module.exports = {
 	lightsOn,
 	lightsOff,
 	cycleLightsColor,
+	adjustSaturation,
+	adjustBrightness,
 	lightsAreOn,
 	pushColor,
 	popColor,
@@ -27,74 +29,101 @@ client.on("light-offline", light => {
 client.init();
 
 function toggleLights() {
-	if (lightsAreOn()) {
-		lightsOff();
-	} else {
-		lightsOn();
-	}
+	lightsAreOn().then((areOn) => {
+		if (areOn) {
+			lightsOff();
+		} else {
+			lightsOn();
+		}
+	});
 }
 
-let lightsAreOnVal = false;
-
 function lightsOn() {
-	lightsAreOnVal = true;
 	lights.forEach(light => {
-		light.on();
+		light.on(1000);
 	});
 }
 
 function lightsOff() {
-	lightsAreOnVal = false;
 	lights.forEach(light => {
-
-		// dim light immediately to provide user feedback
-		light.getState((error, data) => {
-			if (!error) {
-				const { color } = data;
-				const { hue, saturation, brightness, kelvin } = color;
-				const newBrightness = brightness / 2;
-				const duration = 0;
-				light.color(hue, saturation, newBrightness, kelvin, duration, () => {
-					light.color(hue, saturation, brightness, kelvin, duration, () => {
-
-						// then fade the light off so the user has time to leave the room
-						light.off(30000);
-					});
-				});
-			}
-		});
+		light.off(1000);
 	});
 }
 
 function lightsAreOn() {
-	return lightsAreOnVal;
+	return getLightStates()
+		.then((datas) => {
+			return datas[0].power;
+		})
+		.catch(() => {
+			return false;
+		});
 }
 
 let currentHue = 120;
 let currentSaturation = 100;
+let currentBrightness = 100;
 
-function cycleLightsColor() {
+function cycleLightsColor(degrees = 60) {
 
-	// add a white step
-	if (currentHue === 300 && currentSaturation > 0) {
-		currentSaturation = 0;
-	} else {
-		currentSaturation = 100;
+	currentHue += degrees;
+	if (currentHue > 360) {
+		currentHue -= 360;
+	} else if (currentHue < 0) {
+		currentHue += 360;
 	}
 
-	// when not white, cycle through colors
-	if (currentSaturation > 0) {
-		currentHue += 60;
-		if (currentHue > 360) {
-			currentHue -= 360;
-		}
-	}
+	// DEBUG
+	console.log("currentHue:", currentHue);
 
 	pushColor({
 		hue: currentHue,
 		saturation: currentSaturation,
-		brightness: 100,
-		kelvin: 3500
+		brightness: currentBrightness,
+		kelvin: 3500,
+		duration: 100,
+	});
+}
+
+function adjustSaturation(amount = 5) {
+
+	currentSaturation += amount;
+	if (currentSaturation > 100) {
+		currentSaturation = 100;
+	} else if (currentSaturation < 0) {
+		currentSaturation = 0;
+	}
+
+	// DEBUG
+	console.log("currentSaturation:", currentSaturation);
+
+	pushColor({
+		hue: currentHue,
+		saturation: currentSaturation,
+		brightness: currentBrightness,
+		kelvin: 3500,
+		duration: 100,
+	});
+}
+
+function adjustBrightness(amount = 5) {
+
+	currentBrightness += amount;
+	if (currentBrightness > 100) {
+		currentBrightness = 100;
+	} else if (currentBrightness < 0) {
+		currentBrightness = 0;
+	}
+
+	// DEBUG
+	console.log("currentBrightness:", currentBrightness);
+
+	pushColor({
+		hue: currentHue,
+		saturation: currentSaturation,
+		brightness: currentBrightness,
+		kelvin: 3500,
+		duration: 100,
 	});
 }
 
@@ -119,6 +148,10 @@ function pushColor({ hue, saturation, brightness, kelvin, duration = 500 }) {
 	})))
 		.then(colors => {
 			pushColorState.push(colors);
+
+			if (pushColorState.length > 100) {
+				pushColorState.shift();
+			}
 		});
 }
 

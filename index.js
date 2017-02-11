@@ -1,156 +1,54 @@
-const lifx = require("./io/lifx");
-const InputArduino = require("./io/InputArduino");
-const child_process = require("child_process");
+const rotaryEncoder = require('johnny-five-rotary-encoder');
+const five = require('johnny-five');
+const lifx = require('./io/lifx');
 
-let state = {
-	// when in modifier mode, the inputs may have different actions
-	// it's like a function/shift key
-	modifierMode: false,
-	// reboot mode allows the host to be rebooted from the controls
-	// useful if no monitor and no ssh access
-	rebootMode: false
-};
+const board = new five.Board();
 
-const inputArduino = new InputArduino({
-	onPress() {
+board.on('ready', () => {
 
-		if (state.modifierMode) {
-			setState({
-				modifierMode: false,
-				rebootMode: false
-			});
-		} else if (lifx.lightsAreOn()) {
-			lifx.cycleLightsColor();
-		} else {
-			lifx.lightsOn();
-		}
-	},
-	onLongPress() {
+  rotaryEncoder({
+    upButton: new five.Button(13),
+    downButton: new five.Button(12),
+    pressButton: new five.Button(11),
+    onUp: () => {
+      lifx.adjustBrightness(5);
+    },
+    onDown: () => {
+      lifx.adjustBrightness(-5);
+    },
+    onPress: () => {
+      lifx.toggleLights();
+    },
+  });
 
-		// in reboot mode, when button is held, reboot the host
-		if (state.rebootMode) {
-			child_process.exec("sudo reboot");
+  let mode = 'color';
 
-		// in modifier mode, when button is held, turn off the lights
-		} else if (state.modifierMode) {
-			
-			if (lifx.lightsAreOn()) {
-
-				lifx.lightsOff();
-			} else {
-
-				setState({
-					rebootMode: true
-				});
-			}
-
-		} else {
-
-			setState({
-				modifierMode: true
-			});
-		}
-	},
-	onPotChange(percent) {
-
-		if (state.modifierMode) {
-
-			// mod mode changes saturation
-			lifx.getLightStates()
-				.then(lightStates => {
-
-					const lightState = lightStates[0];
-					const { color } = lightState;
-
-					lifx.pushColor(Object.assign({}, color, {
-						saturation: percent
-					}));
-				});
-		} else {
-
-			// normal mode changes brightness
-			lifx.getLightStates()
-				.then(lightStates => {
-
-					const lightState = lightStates[0];
-					const { color } = lightState;
-
-					lifx.pushColor(Object.assign({}, color, {
-						brightness: percent
-					}));
-				});
-		}
-	}
+  rotaryEncoder({
+    upButton: new five.Button(10),
+    downButton: new five.Button(9),
+    pressButton: new five.Button(8),
+    onUp: () => {
+      if (mode === 'color') {
+        lifx.cycleLightsColor(5);
+      } else {
+        lifx.adjustSaturation(-5);
+      }
+    },
+    onDown: () => {
+      if (mode === 'color') {
+        lifx.cycleLightsColor(-5);
+      } else {
+        lifx.adjustSaturation(5);
+      }
+    },
+    onPress: () => {
+      if (mode === 'color') {
+        mode = 'saturation';
+      } else {
+        mode = 'color';
+      }
+      // DEBUG
+      console.log("mode:", mode);
+    },
+  });
 });
-
-function setState(change) {
-	const prevState = state;
-	state = Object.assign({}, state, change);
-	onStateChange(prevState);
-}
-
-function onStateChange(prevState) {
-
-	// alert the user that we are in modifier mode
-	if (state.modifierMode && !prevState.modifierMode) {
-
-		console.log("entered modifier mode");
-
-		// this is to notify the user since there is no other feedback yet
-		lifx.pushColor({
-			hue: 170,
-			saturation: 100,
-			brightness: 100,
-			kelvin: 3500,
-			duration: 0
-		})
-			.then(() => {
-				setTimeout(() => {
-					lifx.popColor();
-				}, 1000);
-			});
-
-	} else if (!state.modifierMode && prevState.modifierMode) {
-
-		console.log("exited modifier mode");
-
-		// this is to notify the user since there is no other feedback yet
-		lifx.pushColor({
-			hue: 30,
-			saturation: 100,
-			brightness: 100,
-			kelvin: 3500,
-			duration: 0
-		})
-			.then(() => {
-				setTimeout(() => {
-					lifx.popColor();
-				}, 1000);
-			});
-	}
-
-	if (state.rebootMode && !prevState.rebootMode) {
-
-		console.log("entered reboot mode");
-
-		lifx.pushColor({
-			hue: 10,
-			saturation: 100,
-			brightness: 100,
-			kelvin: 3500,
-			duration: 0
-		});
-
-		// automatically leave reboot mode after some time
-		setTimeout(() => {
-			setState({
-				rebootMode: false
-			});
-		}, 5000);
-	} else if (!state.rebootMode && prevState.rebootMode) {
-
-		console.log("exited modifier mode");
-
-		lifx.popColor();
-	}
-}
